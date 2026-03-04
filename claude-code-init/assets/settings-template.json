@@ -1,0 +1,119 @@
+{
+  "permissions": {
+    "allow": {
+      "Bash": [
+        "npm run *",
+        "npm test *",
+        "pnpm *",
+        "bun *",
+        "git status *",
+        "git diff *",
+        "git log *",
+        "git add *",
+        "git commit *",
+        "git branch *",
+        "git checkout *",
+        "git stash *",
+        "node -v",
+        "npm -v",
+        "npx *",
+        "tsc --noEmit",
+        "eslint *",
+        "prettier *",
+        "ls *",
+        "cat *",
+        "head *",
+        "wc *"
+      ],
+      "Write": [
+        "src/**/*",
+        "tests/**/*",
+        "test/**/*",
+        "*.md",
+        "*.json",
+        "*.yaml",
+        "*.yml"
+      ],
+      "Read": ["**/*"]
+    },
+    "deny": {
+      "Bash": [
+        "rm -rf /",
+        "rm -rf ~",
+        "rm -rf .",
+        "shutdown",
+        "reboot",
+        "curl * | bash",
+        "wget * | bash",
+        "git push --force *",
+        "chmod 777 *",
+        "ssh *",
+        "scp *"
+      ],
+      "Read": [
+        "~/.ssh/*",
+        "~/.aws/*",
+        "~/.env",
+        "**/credentials*",
+        "**/.env*"
+      ],
+      "Write": [
+        "node_modules/**/*",
+        ".git/**/*",
+        "dist/**/*",
+        "build/**/*",
+        ".env*",
+        "*.key",
+        "*.pem",
+        "*.p12",
+        "~/.ssh/*",
+        "~/.aws/*"
+      ]
+    }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "command": "if echo \"$CLAUDE_FILE_PATH\" | grep -qE '\\.(env|key|pem|p12)'; then echo 'BLOCKED: Cannot write to sensitive file'; exit 2; fi; exit 0"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "command": "npm run format -- $CLAUDE_FILE_PATH 2>/dev/null || true"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat .claude/memory/session-state.md 2>/dev/null || echo 'No previous session state.'"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p .claude/memory && date '+## Compact at %Y-%m-%d %H:%M' >> .claude/memory/session-state.md"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "检查当前会话：1) 是否有未完成的任务或失败的测试？如果有，输出 JSON {\"continue\": true, \"systemMessage\": \"还有未完成的工作，请继续\"}。2) 如果任务已完成，将本次会话中的关键发现、架构决策、遇到的问题及解决方案总结写入 .claude/memory/session-state.md（追加模式），然后允许停止。",
+            "model": "claude-haiku-4-5-20251001"
+          }
+        ]
+      }
+    ]
+  }
+}
